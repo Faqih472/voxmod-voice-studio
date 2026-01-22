@@ -1,17 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_sound/flutter_sound.dart'; // Library Audio
 
 class ResultScreen extends StatefulWidget {
   final String characterName;
-  const ResultScreen({super.key, required this.characterName});
+  final String audioPath; // Menerima path audio
+
+  const ResultScreen({
+    super.key,
+    required this.characterName,
+    required this.audioPath,
+  });
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
 }
 
 class _ResultScreenState extends State<ResultScreen> {
+  final FlutterSoundPlayer _player = FlutterSoundPlayer(); // Player Audio
   bool isPlaying = false;
   double pitchValue = 0.0;
   double mixValue = 100.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.openPlayer(); // Buka sesi player
+  }
+
+  @override
+  void dispose() {
+    _player.closePlayer(); // Tutup sesi saat keluar
+    super.dispose();
+  }
+
+  // LOGIC PLAY / STOP
+  Future<void> _togglePlay() async {
+    if (isPlaying) {
+      await _player.stopPlayer();
+      setState(() => isPlaying = false);
+    } else {
+      setState(() => isPlaying = true);
+      await _player.startPlayer(
+          fromURI: widget.audioPath, // Putar file dari rekaman tadi
+          whenFinished: () {
+            setState(() => isPlaying = false); // Reset icon saat audio selesai
+          }
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +65,6 @@ class _ResultScreenState extends State<ResultScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // Waveform Result (Static Image Placeholder)
             Container(
               height: 150,
               width: double.infinity,
@@ -48,10 +83,10 @@ class _ResultScreenState extends State<ResultScreen> {
               children: [
                 IconButton(icon: const Icon(Icons.skip_previous, size: 30), onPressed: () {}),
                 const SizedBox(width: 20),
+
+                // TOMBOL PLAY REAL
                 GestureDetector(
-                  onTap: () {
-                    setState(() => isPlaying = !isPlaying);
-                  },
+                  onTap: _togglePlay,
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -67,21 +102,24 @@ class _ResultScreenState extends State<ResultScreen> {
                     child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.black, size: 30),
                   ),
                 ),
+
                 const SizedBox(width: 20),
                 IconButton(icon: const Icon(Icons.skip_next, size: 30), onPressed: () {}),
               ],
             ),
 
+            const SizedBox(height: 20),
+            Text("Memutar File: ...${widget.audioPath.substring(widget.audioPath.length - 15)}",
+                style: const TextStyle(color: Colors.white24, fontSize: 12)),
+
             const SizedBox(height: 40),
 
-            // Sliders (Fine Tuning)
             _buildSlider("Pitch Tuning", pitchValue, -12, 12, (val) => setState(() => pitchValue = val)),
             const SizedBox(height: 20),
             _buildSlider("AI Strength (Mix)", mixValue, 0, 100, (val) => setState(() => mixValue = val)),
 
             const Spacer(),
 
-            // Share Buttons
             Row(
               children: [
                 Expanded(
@@ -101,7 +139,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.music_note), // Icon TikTok anggap saja
+                    icon: const Icon(Icons.music_note),
                     label: const Text("TikTok"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,

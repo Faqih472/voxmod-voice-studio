@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'processing_screen.dart'; // Import halaman processing
+import 'package:flutter_sound/flutter_sound.dart'; // Library Audio
+import 'package:permission_handler/permission_handler.dart'; // Izin
+import 'package:path_provider/path_provider.dart'; // Path Folder
+import 'package:logger/logger.dart'; // Debugger
+import 'processing_screen.dart';
 
 class StudioScreen extends StatefulWidget {
   final String characterName;
@@ -12,49 +17,117 @@ class StudioScreen extends StatefulWidget {
 }
 
 class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderStateMixin {
+  // Logic Audio
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+  bool _isRecorderInitialized = false;
+  String? _recordedFilePath;
+  final Logger _logger = Logger();
+
+  // Logic UI
   bool isRecording = false;
   Timer? _timer;
   int _recordDuration = 0;
-
-  // Dummy waveform animation controller
   late AnimationController _waveController;
 
   @override
   void initState() {
     super.initState();
     _waveController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat();
+    _initRecorder(); // Inisialisasi Perekam saat buka halaman
+  }
+
+  // 1. SETUP RECORDER & MINTA IZIN
+  Future<void> _initRecorder() async {
+    final status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Izin mikrofon diperlukan untuk merekam!')),
+        );
+      }
+      return; // Stop jika tidak ada izin
+    }
+
+    await _recorder.openRecorder();
+    _isRecorderInitialized = true;
+    _recorder.setSubscriptionDuration(const Duration(milliseconds: 100)); // Update UI tiap 100ms
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _waveController.dispose();
+    _recorder.closeRecorder(); // Wajib tutup recorder biar memori gak bocor
     super.dispose();
   }
 
-  void _toggleRecording() {
-    setState(() {
-      isRecording = !isRecording;
-    });
+  // 2. LOGIC MULAI & STOP REKAM
+  Future<void> _toggleRecording() async {
+    if (!_isRecorderInitialized) return;
 
-    if (isRecording) {
-      // Mulai Timer
-      _recordDuration = 0;
+    if (_recorder.isStopped) {
+      await _startRecording();
+    } else {
+      await _stopRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      // Cari lokasi folder temporary di HP
+      final Directory tempDir = await getTemporaryDirectory();
+      final String path = '${tempDir.path}/voxmod_audio.aac'; // Format AAC lebih ringan
+
+      await _recorder.startRecorder(
+        toFile: path,
+        codec: Codec.aacADTS, // Codec standar HP
+      );
+
+      setState(() {
+        isRecording = true;
+        _recordDuration = 0;
+      });
+
+      // Timer visual
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {
           _recordDuration++;
         });
       });
-    } else {
-      // Stop Timer & Pindah ke Processing
+
+      _logger.i("Mulai merekam di: $path");
+
+    } catch (e) {
+      _logger.e("Gagal merekam: $e");
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      String? path = await _recorder.stopRecorder();
+
       _timer?.cancel();
-      // Simulasi delay sedikit sebelum pindah
-      Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        isRecording = false;
+        _recordedFilePath = path;
+      });
+
+      _logger.i("Rekaman selesai. File disimpan di: $path");
+
+      // Pindah ke Processing Screen membawa Path File
+      if (path != null && mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ProcessingScreen(characterName: widget.characterName)),
+          MaterialPageRoute(
+            builder: (context) => ProcessingScreen(
+              characterName: widget.characterName,
+              audioPath: path, // Kirim path file asli
+            ),
+          ),
         );
-      });
+      }
+    } catch (e) {
+      _logger.e("Gagal stop: $e");
     }
   }
 
@@ -76,7 +149,7 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Visualizer Area
+          // Visualizer (Masih Fake Animation, tapi logic rekam sudah asli)
           SizedBox(
             height: 150,
             child: Row(
@@ -85,7 +158,6 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
                 return AnimatedBuilder(
                   animation: _waveController,
                   builder: (context, child) {
-                    // Fake waveform logic logic
                     double height = isRecording
                         ? 20 + Random().nextInt(100).toDouble()
                         : 10;
@@ -105,22 +177,16 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
             ),
           ),
 
-          // Timer
           Text(
             _formatTime(_recordDuration),
             style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, letterSpacing: 2),
           ),
 
-          const Text("Tekan untuk merekam, lepas untuk selesai", style: TextStyle(color: Colors.white54)),
+          const Text("Tekan untuk merekam, tekan lagi untuk stop", style: TextStyle(color: Colors.white54)),
 
-          // Tombol Rekam Besar
+          // Tombol Rekam
           GestureDetector(
-            onLongPressStart: (_) => _toggleRecording(),
-            onLongPressEnd: (_) => _toggleRecording(),
-            onTap: () {
-              // Fallback kalau user cuma tap sekali (toggle mode)
-              _toggleRecording();
-            },
+            onTap: _toggleRecording, // Tap sekali untuk start/stop
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               height: isRecording ? 120 : 100,
@@ -136,7 +202,6 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
                   BoxShadow(
                     color: isRecording ? Colors.redAccent.withOpacity(0.5) : Theme.of(context).primaryColor.withOpacity(0.3),
                     blurRadius: isRecording ? 30 : 15,
-                    spreadRadius: isRecording ? 10 : 1,
                   )
                 ],
               ),
@@ -148,11 +213,8 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
             ),
           ),
 
-          // Tombol Upload File
           TextButton.icon(
-            onPressed: () {
-              // Logic Upload File
-            },
+            onPressed: () {},
             icon: const Icon(Icons.upload_file, color: Colors.white54),
             label: const Text("Upload Audio File", style: TextStyle(color: Colors.white54)),
           )
