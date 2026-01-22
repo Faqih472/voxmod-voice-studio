@@ -1,0 +1,14 @@
+openapi: 3.0.0
+info:
+  title: VoxMod API
+  version: 0.1.0
+
+paths:
+  /convert:
+    post:
+      summary: Convert voice using AI model
+      requestBody:
+        required: true
+      responses:
+        '200':
+          description: Converted audio
