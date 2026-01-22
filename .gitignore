@@ -1,0 +1,26 @@
+# OS
+.DS_Store
+
+# Flutter / Android
+build/
+.android/
+.gradle/
+*.keystore
+
+# Env
+.env
+.env.*
+
+# Audio files
+*.wav
+*.mp3
+*.ogg
+
+# AI / Models (DO NOT COMMIT)
+models/
+datasets/
+*.pth
+*.pt
+
+# Logs
+*.log
