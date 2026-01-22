@@ -1,84 +1,94 @@
 import os
 import shutil
-import numpy as np
-import librosa
-import soundfile as sf
+import torch
+
+# --- 🛠️ BYPASS SECURITY (JANGAN DIHAPUS) ---
+original_load = torch.load
+def bypass_security_load(*args, **kwargs):
+    if 'weights_only' not in kwargs:
+        kwargs['weights_only'] = False
+    return original_load(*args, **kwargs)
+torch.load = bypass_security_load
+# -------------------------------------------
+
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
 import uvicorn
+from rvc_python.infer import RVCInference
 
 app = FastAPI()
 
-# Setup Folder
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "outputs"
+# --- PATH ---
+BASE_DIR = os.getcwd()
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
+
+MODEL_NAME = "Keqing_e500_s13000.pth"
+INDEX_NAME = "Keqing.index"  # Pastikan file ini ada!
+
+MODEL_PATH = os.path.join(BASE_DIR, "assets", "weights", MODEL_NAME)
+INDEX_PATH = os.path.join(BASE_DIR, "assets", "weights", INDEX_NAME)
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-@app.get("/")
-def home():
-    return {"status": "VoxMod Audio Engine Ready"}
-
-def process_audio_dsp(input_path, output_path, character_name):
-    """
-    Fungsi Pengubah Suara Sederhana (DSP)
-    Sambil menunggu RVC, kita pakai manipulasi Pitch dulu.
-    """
-    print(f"🔄 Memproses audio untuk karakter: {character_name}")
-    
-    # 1. Load Audio
-    # sr=None artinya pakai sample rate asli file
-    y, sr = librosa.load(input_path, sr=None) 
-
-    # 2. Tentukan Perubahan Nada (n_steps)
-    # Positif = Cempreng (Chipmunk/Anime)
-    # Negatif = Berat (Monster/Robot)
-    steps = 0
-    if "keqing" in character_name.lower() or "anime" in character_name.lower():
-        steps = 6  # Naik 6 nada (Jadi cewek/kartun)
-    elif "hantu" in character_name.lower() or "robot" in character_name.lower():
-        steps = -6 # Turun 6 nada (Jadi berat)
-    elif "jokowi" in character_name.lower():
-        steps = -2 # Agak berat dikit
-    
-    # 3. Proses Perubahan Pitch
-    if steps != 0:
-        # Librosa pitch shifting (High Quality)
-        y_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=steps)
-    else:
-        y_shifted = y
-
-    # 4. Simpan File Baru
-    sf.write(output_path, y_shifted, sr)
-    print("✅ Proses selesai!")
+print(f"⏳ Memuat Model: {MODEL_NAME}...")
+rvc = RVCInference(device="cuda:0")
 
 @app.post("/convert")
 async def convert_voice(
-    file: UploadFile = File(...),
-    character: str = Form(...)
+        file: UploadFile = File(...),
+        character: str = Form(...)
 ):
     try:
-        # 1. Terima File
-        file_location = f"{UPLOAD_FOLDER}/{file.filename}"
+        # 1. Simpan File
+        file_location = os.path.join(UPLOAD_FOLDER, file.filename)
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        
-        # 2. Siapkan Nama File Output
-        # Kita pastikan outputnya juga .wav biar aman
-        output_filename = f"processed_{file.filename.split('.')[0]}.wav"
-        output_location = f"{OUTPUT_FOLDER}/{output_filename}"
 
-        # 3. JALANKAN PROSES AUDIO
-        # Nanti di sini kita ganti dengan fungsi RVC_Inference()
-        process_audio_dsp(file_location, output_location, character)
+        output_filename = f"rvc_{file.filename.split('.')[0]}.wav"
+        output_location = os.path.join(OUTPUT_FOLDER, output_filename)
 
-        # 4. Kirim Balik
+        print(f"🔄 Mengubah suara: {file.filename}")
+
+        # 2. LOAD MODEL
+        rvc.load_model(MODEL_PATH)
+
+        # --- 🎛️ TUNING AREA (SETTINGS) 🎛️ ---
+
+        # A. SETTING NADA (PITCH) - PENTING!
+        # Kalau suara asli kamu COWOK (Berat) -> Pakai 12 (Naik 1 Oktaf)
+        # Kalau suara asli kamu CEWEK/ANAK KECIL -> Pakai 0
+        # Kalau suaranya kayak TIKUS -> Kurangi (misal jadi 8 atau 5)
+        # Kalau suaranya masih NGE-BASS -> Tambah (misal jadi 14 atau 15)
+        rvc.f0_up_key = 18
+
+        # B. METODE (Kualitas)
+        rvc.f0_method = "rmvpe" # Terbaik untuk suara anime
+
+        # C. INDEX (Aksen Karakter)
+        # Kita paksa inject variabel ini secara manual
+        if os.path.exists(INDEX_PATH):
+            print("✅ Index file ditemukan, menerapkan aksen Keqing...")
+            rvc.index_file = INDEX_PATH
+            rvc.index_rate = 0.75       # Kekuatan aksen (0.75 standard)
+        else:
+            print("⚠️ Index file tidak ditemukan! Suara mungkin kurang mirip.")
+
+        # -------------------------------------
+
+        # 3. EKSEKUSI
+        rvc.infer_file(
+            input_path=file_location,
+            output_path=output_location
+        )
+
+        print("✅ Selesai! Mengirim audio...")
         return FileResponse(output_location, media_type="audio/wav", filename=output_filename)
-    
+
     except Exception as e:
         print(f"❌ Error: {e}")
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    # Host 0.0.0.0 agar bisa diakses HP
     uvicorn.run(app, host="0.0.0.0", port=8000)
