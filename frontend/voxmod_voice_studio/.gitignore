@@ -1,0 +1,52 @@
+# =========================
+# Flutter / Dart
+# =========================
+.dart_tool/
+.packages
+.pub/
+build/
+.metadata
+
+# =========================
+# Flutter web
+# =========================
+web/.last_build_id
+
+# =========================
+# IDE
+# =========================
+.idea/
+.vscode/
+*.iml
+
+# =========================
+# Android
+# =========================
+android/.gradle/
+android/local.properties
+android/key.properties
+android/**/GeneratedPluginRegistrant.java
+
+# =========================
+# iOS / macOS
+# =========================
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/.symlinks/
+ios/DerivedData/
+
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/.symlinks/
+macos/DerivedData/
+
+# =========================
+# Windows / Linux
+# =========================
+windows/flutter/ephemeral/
+linux/flutter/ephemeral/
+
+# =========================
+# Coverage
+# =========================
+coverage/
