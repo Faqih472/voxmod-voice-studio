@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart'; // Import Service
 import 'result_screen.dart';
 
 class ProcessingScreen extends StatefulWidget {
   final String characterName;
-  final String audioPath; // TAMBAHAN: Menerima path audio
+  final String audioPath;
 
   const ProcessingScreen({
     super.key,
@@ -16,62 +17,66 @@ class ProcessingScreen extends StatefulWidget {
 }
 
 class _ProcessingScreenState extends State<ProcessingScreen> {
-  String loadingText = "Mengunggah Audio...";
+  String loadingText = "Menghubungkan ke Server...";
+  final ApiService _apiService = ApiService(); // Panggil Service
 
   @override
   void initState() {
     super.initState();
-    _startFakeProcess();
+    _startRealProcess(); // Ganti jadi Real Process
   }
 
-  void _startFakeProcess() async {
-    // Simulasi Processing AI (Nanti di sini kita panggil Server Python)
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => loadingText = "Memproses Suara ${widget.characterName}...");
+  void _startRealProcess() async {
+    // 1. Update UI
+    setState(() => loadingText = "Mengirim Audio ke Server...");
 
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => loadingText = "Finalizing...");
+    // 2. Panggil API (Ini proses kirim-terima file)
+    String? resultPath = await _apiService.convertVoice(widget.audioPath, widget.characterName);
 
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) {
-      // Oper file path ke layar hasil
+    if (!mounted) return;
+
+    if (resultPath != null) {
+      // 3. JIKA SUKSES
+      setState(() => loadingText = "Selesai! Membuka hasil...");
+      await Future.delayed(const Duration(milliseconds: 500)); // Delay dikit biar mulus
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => ResultScreen(
             characterName: widget.characterName,
-            audioPath: widget.audioPath, // Teruskan file aslinya
+            audioPath: resultPath, // Pakai FILE BARU dari server
           ),
         ),
       );
+    } else {
+      // 4. JIKA GAGAL
+      setState(() => loadingText = "Gagal Terhubung ke Server 😢");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Gagal koneksi. Pastikan IP benar & Server Python nyala."),
+            backgroundColor: Colors.red,
+          )
+      );
+
+      // Tunggu 2 detik lalu kembali
+      await Future.delayed(const Duration(seconds: 2));
+      Navigator.pop(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... Bagian build UI biarkan sama seperti sebelumnya ...
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 150, height: 150,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 8,
-                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
-                    backgroundColor: Colors.white10,
-                  ),
-                ),
-                const Icon(Icons.psychology, size: 60, color: Colors.white24),
-              ],
-            ),
-            const SizedBox(height: 40),
-            Text(loadingText, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text("File: ${widget.audioPath.split('/').last}", style: const TextStyle(color: Colors.white24, fontSize: 12)),
+            CircularProgressIndicator(color: Theme.of(context).primaryColor),
+            const SizedBox(height: 20),
+            Text(loadingText, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       ),

@@ -19,6 +19,7 @@ dependencies:
   permission_handler: ^11.3.0 # Manajemen Izin (Mic)
   path_provider: ^2.1.2   # Akses folder penyimpanan HP
   logger: ^2.0.0          # Biar debugging enak dilihat di console
+  dio: ^5.4.0
 
 dev_dependencies:
   flutter_test:
