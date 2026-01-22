@@ -40,12 +40,19 @@ class _ResultScreenState extends State<ResultScreen> {
       setState(() => isPlaying = false);
     } else {
       setState(() => isPlaying = true);
+
+      // Hitung speed berdasarkan slider
+      double speed = 1.0 + (pitchValue / 20);
+      if (speed < 0.5) speed = 0.5;
+
       await _player.startPlayer(
-          fromURI: widget.audioPath, // Putar file dari rekaman tadi
+          fromURI: widget.audioPath,
           whenFinished: () {
-            setState(() => isPlaying = false); // Reset icon saat audio selesai
+            setState(() => isPlaying = false);
           }
       );
+      // Set speed segera setelah start
+      await _player.setSpeed(speed);
     }
   }
 
@@ -114,8 +121,19 @@ class _ResultScreenState extends State<ResultScreen> {
 
             const SizedBox(height: 40),
 
-            _buildSlider("Pitch Tuning", pitchValue, -12, 12, (val) => setState(() => pitchValue = val)),
-            const SizedBox(height: 20),
+            _buildSlider("Pitch Tuning", pitchValue, -12, 12, (val) {
+              setState(() => pitchValue = val);
+              // LOGIC UBAH PITCH (SPEED):
+              // Nilai 0 = 1.0 (Normal)
+              // Nilai 12 = ~1.5 (Cepat/Chipmunk)
+              // Nilai -12 = ~0.5 (Lambat/Berat)
+              double speed = 1.0 + (val / 20);
+              if (speed < 0.5) speed = 0.5; // Batas minimum
+
+              if (isPlaying) {
+                _player.setSpeed(speed); // Ubah speed saat play
+              }
+            }),
             _buildSlider("AI Strength (Mix)", mixValue, 0, 100, (val) => setState(() => mixValue = val)),
 
             const Spacer(),
