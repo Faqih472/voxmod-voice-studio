@@ -1,0 +1,116 @@
+MyNotes
+
+voxmod-voice-studio/
+├── README.md
+├── LICENSE
+├── .gitignore
+├── SECURITY.md
+│
+├── api-contract/
+│   └── openapi.yaml
+│
+├── frontend/
+│   ├── README.md
+│   └── voxmod_voice_studio/
+│       ├── android/          (auto dari Flutter)
+│       ├── ios/              (auto)
+│       ├── web/              (auto)
+│       ├── windows/          (auto)
+│       ├── linux/            (auto)
+│       ├── macos/            (auto)
+│       ├── test/             (auto)
+│       │
+│       ├── lib/
+│       │   ├── main.dart     ✅ (SATU-SATUNYA FILE YANG KITA ISI SEKARANG)
+│       │
+│       ├── assets/           (kosong dulu)
+│       │   ├── icons/
+│       │   └── audio/
+│       │
+│       ├── pubspec.yaml
+│       └── README.md
+
+
+
+C:.
+├───.idea
+│   ├───caches
+│   └───libraries
+├───api-contract
+└───frontend
+    └───voxmod_voice_studio
+        ├───.dart_tool
+        │   └───dartpad
+        ├───.idea
+        │   ├───libraries
+        │   └───runConfigurations
+        ├───android
+        │   ├───app
+        │   │   └───src
+        │   │       ├───debug
+        │   │       ├───main
+        │   │       │   ├───java
+        │   │       │   │   └───io
+        │   │       │   │       └───flutter
+        │   │       │   │           └───plugins
+        │   │       │   ├───kotlin
+        │   │       │   │   └───com
+        │   │       │   │       └───example
+        │   │       │   │           └───voxmod_voice_studio
+        │   │       │   └───res
+        │   │       │       ├───drawable
+        │   │       │       ├───drawable-v21
+        │   │       │       ├───mipmap-hdpi
+        │   │       │       ├───mipmap-mdpi
+        │   │       │       ├───mipmap-xhdpi
+        │   │       │       ├───mipmap-xxhdpi
+        │   │       │       ├───mipmap-xxxhdpi
+        │   │       │       ├───values
+        │   │       │       └───values-night
+        │   │       └───profile
+        │   └───gradle
+        │       └───wrapper
+        ├───ios
+        │   ├───Flutter
+        │   │   └───ephemeral
+        │   ├───Runner
+        │   │   ├───Assets.xcassets
+        │   │   │   ├───AppIcon.appiconset
+        │   │   │   └───LaunchImage.imageset
+        │   │   └───Base.lproj
+        │   ├───Runner.xcodeproj
+        │   │   ├───project.xcworkspace
+        │   │   │   └───xcshareddata
+        │   │   └───xcshareddata
+        │   │       └───xcschemes
+        │   ├───Runner.xcworkspace
+        │   │   └───xcshareddata
+        │   └───RunnerTests
+        ├───lib
+        ├───linux
+        │   ├───flutter
+        │   └───runner
+        ├───macos
+        │   ├───Flutter
+        │   │   └───ephemeral
+        │   ├───Runner
+        │   │   ├───Assets.xcassets
+        │   │   │   └───AppIcon.appiconset
+        │   │   ├───Base.lproj
+        │   │   └───Configs
+        │   ├───Runner.xcodeproj
+        │   │   ├───project.xcworkspace
+        │   │   │   └───xcshareddata
+        │   │   └───xcshareddata
+        │   │       └───xcschemes
+        │   ├───Runner.xcworkspace
+        │   │   └───xcshareddata
+        │   └───RunnerTests
+        ├───test
+        ├───web
+        │   └───icons
+        └───windows
+            ├───flutter
+            └───runner
+                └───resources
+PS C:\project\voxmod-voice-studio>
