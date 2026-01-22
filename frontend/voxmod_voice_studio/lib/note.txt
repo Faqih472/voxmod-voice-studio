@@ -1,0 +1,32 @@
+voxmod-voice-studio/
+├── README.md
+├── LICENSE
+├── .gitignore
+├── SECURITY.md
+│
+├── api-contract/
+│   └── openapi.yaml
+│
+├── frontend/
+│   ├── README.md
+│   └── voxmod_voice_studio/
+│       ├── android/
+│       ├── ios/
+│       ├── web/
+│       ├── ... (folder platform lainnya)
+│       │
+│       ├── lib/
+│       │   ├── screens/                  📂 (BUAT FOLDER INI)
+│       │   │   ├── home_screen.dart      ✅ (Halaman Utama)
+│       │   │   ├── studio_screen.dart    ✅ (Halaman Rekam)
+│       │   │   ├── processing_screen.dart✅ (Halaman Loading)
+│       │   │   └── result_screen.dart    ✅ (Halaman Hasil)
+│       │   │
+│       │   ├── main.dart                 ✅ (Entry Point)
+│       │
+│       ├── assets/
+│       │   ├── icons/
+│       │   └── audio/
+│       │
+│       ├── pubspec.yaml
+│       └── README.md
