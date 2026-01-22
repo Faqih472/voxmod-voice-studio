@@ -76,11 +76,11 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
     try {
       // Cari lokasi folder temporary di HP
       final Directory tempDir = await getTemporaryDirectory();
-      final String path = '${tempDir.path}/voxmod_audio.aac'; // Format AAC lebih ringan
+      final String path = '${tempDir.path}/voxmod_audio.wav'; // 1. Ubah ekstensi jadi .wav
 
       await _recorder.startRecorder(
         toFile: path,
-        codec: Codec.aacADTS, // Codec standar HP
+        codec: Codec.pcm16WAV, // 2. Ganti Codec jadi WAV (Kualitas Tinggi & Kompatibel)
       );
 
       setState(() {
