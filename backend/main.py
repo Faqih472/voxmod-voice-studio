@@ -1,22 +1,15 @@
 import os
 import shutil
+import numpy as np
+import librosa
+import soundfile as sf
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import uvicorn
 
 app = FastAPI()
 
-# 1. Izin Akses (Biar HP bisa ngobrol sama Laptop)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Folder untuk simpan file sementara
+# Setup Folder
 UPLOAD_FOLDER = "uploads"
 OUTPUT_FOLDER = "outputs"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -24,40 +17,68 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 @app.get("/")
 def home():
-    return {"status": "VoxMod AI Server is Running!"}
+    return {"status": "VoxMod Audio Engine Ready"}
+
+def process_audio_dsp(input_path, output_path, character_name):
+    """
+    Fungsi Pengubah Suara Sederhana (DSP)
+    Sambil menunggu RVC, kita pakai manipulasi Pitch dulu.
+    """
+    print(f"🔄 Memproses audio untuk karakter: {character_name}")
+    
+    # 1. Load Audio
+    # sr=None artinya pakai sample rate asli file
+    y, sr = librosa.load(input_path, sr=None) 
+
+    # 2. Tentukan Perubahan Nada (n_steps)
+    # Positif = Cempreng (Chipmunk/Anime)
+    # Negatif = Berat (Monster/Robot)
+    steps = 0
+    if "keqing" in character_name.lower() or "anime" in character_name.lower():
+        steps = 6  # Naik 6 nada (Jadi cewek/kartun)
+    elif "hantu" in character_name.lower() or "robot" in character_name.lower():
+        steps = -6 # Turun 6 nada (Jadi berat)
+    elif "jokowi" in character_name.lower():
+        steps = -2 # Agak berat dikit
+    
+    # 3. Proses Perubahan Pitch
+    if steps != 0:
+        # Librosa pitch shifting (High Quality)
+        y_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=steps)
+    else:
+        y_shifted = y
+
+    # 4. Simpan File Baru
+    sf.write(output_path, y_shifted, sr)
+    print("✅ Proses selesai!")
 
 @app.post("/convert")
 async def convert_voice(
     file: UploadFile = File(...),
     character: str = Form(...)
 ):
-    print(f"📥 Menerima file: {file.filename} | Karakter: {character}")
-    
-    # 1. Simpan file asli dari Flutter
-    file_location = f"{UPLOAD_FOLDER}/{file.filename}"
-    with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    print(f"💾 File tersimpan di: {file_location}")
+    try:
+        # 1. Terima File
+        file_location = f"{UPLOAD_FOLDER}/{file.filename}"
+        with open(file_location, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # 2. Siapkan Nama File Output
+        # Kita pastikan outputnya juga .wav biar aman
+        output_filename = f"processed_{file.filename.split('.')[0]}.wav"
+        output_location = f"{OUTPUT_FOLDER}/{output_filename}"
 
-    # ==========================================
-    # DISINI NANTI LOGIC AI AKAN BEKERJA
-    # (Sementara kita 'bypass' dulu: Kirim balik file aslinya)
-    # ==========================================
+        # 3. JALANKAN PROSES AUDIO
+        # Nanti di sini kita ganti dengan fungsi RVC_Inference()
+        process_audio_dsp(file_location, output_location, character)
+
+        # 4. Kirim Balik
+        return FileResponse(output_location, media_type="audio/wav", filename=output_filename)
     
-    # Simulasi proses (misal file output namanya beda)
-    output_filename = f"processed_{file.filename}"
-    output_location = f"{OUTPUT_FOLDER}/{output_filename}"
-    
-    # Copy file asli ke folder output (Pura-pura udah diedit AI)
-    shutil.copy(file_location, output_location)
-    
-    print(f"📤 Mengirim balik: {output_location}")
-    
-    # 2. Return URL/File ke Flutter
-    # Kita langsung kirim filenya sebagai response stream
-    return FileResponse(output_location, media_type="audio/aac", filename=output_filename)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
-    # Host 0.0.0.0 biar bisa diakses dari HP/Emulator
+    # Host 0.0.0.0 agar bisa diakses HP
     uvicorn.run(app, host="0.0.0.0", port=8000)
