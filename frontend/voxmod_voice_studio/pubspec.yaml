@@ -1,25 +1,31 @@
 name: voxmod_voice_studio
-description: "A new Flutter project."
+description: "A AI Voice Converter Application."
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.0.0 # Saya set ke 3.0.0 agar lebih aman kompatibilitasnya
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # --- ICONS ---
+  # --- UI & Icons ---
   cupertino_icons: ^1.0.8
 
-  # --- AUDIO & STORAGE (NEW) ---
-  flutter_sound: ^9.2.13  # Perekam & Pemutar Audio Pro
-  permission_handler: ^11.3.0 # Manajemen Izin (Mic)
-  path_provider: ^2.1.2   # Akses folder penyimpanan HP
-  logger: ^2.0.0          # Biar debugging enak dilihat di console
+  # --- Networking (API) ---
   dio: ^5.4.0
+
+  # --- Audio Logic ---
+  flutter_sound: ^9.2.13  # Recorder & Player
+
+  # --- System & Storage ---
+  permission_handler: ^11.3.0 # Izin Microphone
+  path_provider: ^2.1.2       # Akses Temp Directory
+
+  # --- Utilities ---
+  logger: ^2.0.0
 
 dev_dependencies:
   flutter_test:
