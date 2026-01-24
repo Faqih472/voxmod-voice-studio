@@ -1,3 +1,17 @@
+need assets 
+-Keqing.index
+-Keqing_e500_s13000.pth
+-hubert_base.pt
+-rmvpe.pth
+-klee 
+-and more or you can download from my drive and drive and huggingface
+
+-download from my
+https://drive.google.com/drive/folders/1cGXv43h6hgYSjyCiJ1LKe9FEdCe0BhLB?usp=drive_link
+-https://huggingface.co/Kakao111/KleeJP/resolve/main/KleeJP.zip?download=true
+
+
+other requirement
 pip install "numpy<2.0"
 pip install rvc-python
 pip uninstall -y numpy tensorflow tensorboard tf-keras tb-nightly
@@ -10,9 +24,15 @@ https://www.gyan.dev/ffmpeg/builds/
 ffmpeg -version
 pip install librosa
 
+pip install "numpy<2.0"
+pip install rvc-python
+pip uninstall -y numpy tensorflow tensorboard tf-keras tb-nightly
+pip install "numpy==1.26.4"
+pip install "tensorboard==2.15.1"
+pip install scipy
+pip install fastapi uvicorn rvc-python pydub python-multipart
+pip install pydub
+https://www.gyan.dev/ffmpeg/builds/
+ffmpeg -version
+pip install librosa
 
-need assets 
--Keqing.index
--Keqing_e500_s13000.pth
--hubert_base.pt
--rmvpe.pth
