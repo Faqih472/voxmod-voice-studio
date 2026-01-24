@@ -31,11 +31,15 @@ HUBERT_PATH = os.path.join(BASE_DIR, HUBERT_FILE)
 RMVPE_PATH  = os.path.join(BASE_DIR, RMVPE_FILE)
 
 # --- DAFTAR MODEL YANG WAJIB ADA ---
+# --- DAFTAR MODEL YANG WAJIB ADA ---
 REQUIRED_MODELS = [
     "Keqing_e500_s13000.pth",
     "Keqing.index",
     "Klee_280e_6440s.pth",
-    "klee.index"
+    "klee.index",
+    # --- TAMBAHAN ZETA ---
+    "zetaTest.pth",
+    "added_IVF462_Flat_nprobe_1_zetaTest_v2.index"
 ]
 
 # 1. Cek Hubert
