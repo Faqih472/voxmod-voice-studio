@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import '../services/api_service.dart'; // Import API Service
 
+//update pitch
+
 class ResultScreen extends StatefulWidget {
   final String characterName;
   final String currentAudioPath; // Path Audio AI saat ini
