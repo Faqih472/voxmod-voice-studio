@@ -1,18 +1,27 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:io'; // Wajib untuk cek File
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:logger/logger.dart';
 
-// Pastikan import ini sesuai dengan nama file Anda
-import 'processing_screen.dart';
+// Import Service & Halaman Hasil
+import '../services/api_service.dart';
+import 'result_screen.dart';
 
 class StudioScreen extends StatefulWidget {
   final String characterName;
-  const StudioScreen({super.key, required this.characterName});
+  final String modelFilename;
+  final String indexFilename;
+
+  const StudioScreen({
+    super.key,
+    required this.characterName,
+    required this.modelFilename,
+    required this.indexFilename,
+  });
 
   @override
   State<StudioScreen> createState() => _StudioScreenState();
@@ -24,8 +33,14 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
   bool _isRecorderInitialized = false;
   final Logger _logger = Logger();
 
+  // Logic API
+  final ApiService _apiService = ApiService();
+
   // Logic UI
   bool isRecording = false;
+  bool isProcessing = false;
+  String processingText = "";
+
   Timer? _timer;
   int _recordDuration = 0;
   late AnimationController _waveController;
@@ -33,7 +48,6 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    // Animasi gelombang suara (Fake Visualizer)
     _waveController = AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 1000)
@@ -42,9 +56,7 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
     _initRecorder();
   }
 
-  // 1. SETUP RECORDER & MINTA IZIN
   Future<void> _initRecorder() async {
-    // Minta izin mikrofon saat layar dibuka
     var status = await Permission.microphone.request();
     if (status != PermissionStatus.granted) {
       if (mounted) {
@@ -52,9 +64,8 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
           const SnackBar(content: Text('Izin mikrofon WAJIB diberikan!')),
         );
       }
-      return; // Stop jika tidak diizinkan
+      return;
     }
-
     await _recorder.openRecorder();
     _isRecorderInitialized = true;
     _recorder.setSubscriptionDuration(const Duration(milliseconds: 100));
@@ -68,12 +79,13 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  // 2. TOGGLE START/STOP
+  // --- LOGIC RECORDING ---
+
   Future<void> _toggleRecording() async {
+    if (isProcessing) return;
+
     if (!_isRecorderInitialized) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Recorder belum siap, coba restart aplikasi.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Recorder belum siap.')));
       return;
     }
 
@@ -84,21 +96,14 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
     }
   }
 
-  // 3. MULAI REKAM (VERSI PERBAIKAN: AAC)
   Future<void> _startRecording() async {
     try {
       final Directory tempDir = await getTemporaryDirectory();
-
-      // PERUBAHAN 1: Gunakan ekstensi .aac (Lebih stabil di Android)
       final String path = '${tempDir.path}/voxmod_audio.aac';
 
       await _recorder.startRecorder(
         toFile: path,
-
-        // PERUBAHAN 2: Gunakan Codec AAC ADTS
-        // Codec.pcm16WAV sering menghasilkan file kosong di beberapa HP.
         codec: Codec.aacADTS,
-
         sampleRate: 44100,
         numChannels: 1,
         bitRate: 128000,
@@ -109,67 +114,91 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
         _recordDuration = 0;
       });
 
-      // Update Timer setiap detik
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        setState(() {
-          _recordDuration++;
-        });
+        setState(() => _recordDuration++);
       });
 
-      _logger.i("🎙️ Mulai merekam ke: $path");
     } catch (e) {
-      _logger.e("❌ Gagal start recording: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal merekam: $e')),
-      );
+      _logger.e("❌ Gagal start: $e");
     }
   }
 
-  // 4. STOP REKAM & VALIDASI FILE
   Future<void> _stopRecording() async {
     try {
       String? path = await _recorder.stopRecorder();
-
       _timer?.cancel();
-      setState(() {
-        isRecording = false;
-      });
+      setState(() => isRecording = false);
 
       if (path != null) {
-        // --- VALIDASI UKURAN FILE ---
         File recordedFile = File(path);
         int fileSize = await recordedFile.length();
 
-        _logger.i("✅ Rekaman selesai.");
-        _logger.i("📂 Lokasi: $path");
-        _logger.i("📦 Ukuran: $fileSize bytes");
-
         if (fileSize < 1000) {
-          _logger.w("⚠️ PERINGATAN: File terlalu kecil ($fileSize bytes). Suara mungkin tidak masuk.");
-          if(mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Gagal merekam suara (File Kosong). Cek Izin Mic!')),
-            );
-          }
+          if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Suara kosong/terlalu pendek.')));
           return;
         }
-        // ----------------------------
 
-        // NAVIGASI: Kirim file .aac ini ke layar processing
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProcessingScreen(
-                characterName: widget.characterName,
-                audioPath: path,
-              ),
-            ),
-          );
-        }
+        // Langsung proses setelah stop
+        _processAudio(path);
       }
     } catch (e) {
       _logger.e("❌ Gagal stop: $e");
+    }
+  }
+
+  // --- LOGIC API / PROCESSING ---
+
+  Future<void> _processAudio(String rawAudioPath) async {
+    setState(() {
+      isProcessing = true;
+      processingText = "Mengirim ke AI...";
+    });
+
+    // 1. Tentukan Default Pitch awal
+    // Kita set 12 (untuk Cowok -> Anime Girl) sebagai default convert pertama.
+    // Nanti user bisa ubah di ResultScreen.
+    int initialPitch = 12;
+
+    // 2. Panggil API
+    String? resultPath = await _apiService.convertVoice(
+      rawAudioPath,
+      widget.characterName,
+      widget.modelFilename,
+      widget.indexFilename,
+      initialPitch,
+    );
+
+    if (!mounted) return;
+
+    if (resultPath != null) {
+      setState(() => processingText = "Berhasil! Membuka...");
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // 3. Navigasi ke Result Screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResultScreen(
+            characterName: widget.characterName,
+            currentAudioPath: resultPath,    // File Hasil AI
+            originalAudioPath: rawAudioPath, // [PENTING] File Mentah untuk diedit ulang
+            modelFilename: widget.modelFilename,
+            indexFilename: widget.indexFilename,
+            initialPitch: initialPitch.toDouble(),
+          ),
+        ),
+      );
+    } else {
+      setState(() {
+        isProcessing = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Gagal koneksi ke Server Python."),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -188,88 +217,105 @@ class _StudioScreenState extends State<StudioScreen> with SingleTickerProviderSt
         elevation: 0,
         leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context)
+            onPressed: () => !isProcessing ? Navigator.pop(context) : null
         ),
         title: Text(widget.characterName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      body: Stack(
         children: [
-          // Visualizer (Animated Bars)
-          SizedBox(
-            height: 150,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(10, (index) {
-                return AnimatedBuilder(
-                  animation: _waveController,
-                  builder: (context, child) {
-                    // Jika merekam, tinggi batang akan acak (efek suara)
-                    double height = isRecording
-                        ? 20 + Random().nextInt(100).toDouble()
-                        : 10;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      width: 10,
-                      height: height,
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent, // Ganti warna sesuai tema
-                        borderRadius: BorderRadius.circular(50),
-                      ),
+          // 1. LAYER UTAMA (Recording UI Clean)
+          Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // --- VISUALIZER ---
+              SizedBox(
+                height: 120,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(10, (index) {
+                    return AnimatedBuilder(
+                      animation: _waveController,
+                      builder: (context, child) {
+                        double height = isRecording
+                            ? 20 + Random().nextInt(80).toDouble()
+                            : 10;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 100),
+                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          width: 10,
+                          height: height,
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent,
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                        );
+                      },
                     );
-                  },
-                );
-              }),
-            ),
-          ),
-
-          // Timer Text
-          Text(
-            _formatTime(_recordDuration),
-            style: const TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-                color: Colors.white
-            ),
-          ),
-
-          const Text(
-              "Tekan Mic untuk Merekam",
-              style: TextStyle(color: Colors.white54)
-          ),
-
-          // Tombol Rekam (Main Button)
-          GestureDetector(
-            onTap: _toggleRecording,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              height: isRecording ? 120 : 100,
-              width: isRecording ? 120 : 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isRecording ? Colors.redAccent : const Color(0xFF1E1E2C),
-                border: Border.all(
-                    color: isRecording ? Colors.red : Colors.blueAccent,
-                    width: 3
+                  }),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isRecording
-                        ? Colors.redAccent.withOpacity(0.5)
-                        : Colors.blueAccent.withOpacity(0.3),
-                    blurRadius: isRecording ? 30 : 15,
-                  )
+              ),
+
+              // --- TIMER & TOMBOL ---
+              Column(
+                children: [
+                  Text(
+                    _formatTime(_recordDuration),
+                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.white),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                      isRecording ? "Sedang Merekam..." : "Tekan Mic untuk Merekam",
+                      style: const TextStyle(color: Colors.white54)
+                  ),
+                  const SizedBox(height: 40),
+
+                  GestureDetector(
+                    onTap: _toggleRecording,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: isRecording ? 120 : 100,
+                      width: isRecording ? 120 : 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isRecording ? Colors.redAccent : const Color(0xFF1E1E2C),
+                        border: Border.all(color: isRecording ? Colors.red : Colors.blueAccent, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isRecording ? Colors.redAccent.withOpacity(0.5) : Colors.blueAccent.withOpacity(0.3),
+                            blurRadius: isRecording ? 30 : 15,
+                          )
+                        ],
+                      ),
+                      child: Icon(
+                        isRecording ? Icons.stop : Icons.mic,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              child: Icon(
-                isRecording ? Icons.stop : Icons.mic,
-                size: 40,
-                color: Colors.white,
+            ],
+          ),
+
+          // 2. LAYER OVERLAY (Muncul saat Processing)
+          if (isProcessing)
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.black.withOpacity(0.8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Colors.blueAccent),
+                  const SizedBox(height: 20),
+                  Text(
+                      processingText,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
+                  ),
+                ],
               ),
             ),
-          ),
         ],
       ),
     );
