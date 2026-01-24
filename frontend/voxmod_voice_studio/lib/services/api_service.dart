@@ -10,7 +10,7 @@ class ApiService {
   // ⚠️ GANTI INI DENGAN IP LAPTOP KAMU!
   // Jika pakai Emulator Android: gunakan 'http://10.0.2.2:8000'
   // Jika pakai HP Fisik (colok USB): gunakan 'http://192.168.1.XX:8000' (sesuai ipconfig tadi)
-  final String baseUrl = 'http://10.184.75.70:8000';  // Benar
+  final String baseUrl = 'http://10.61.202.70:8000';  // Benar
 
   Future<String?> convertVoice(String audioPath, String characterName) async {
     try {
