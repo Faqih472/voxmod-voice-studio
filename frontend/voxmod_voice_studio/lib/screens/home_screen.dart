@@ -11,11 +11,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // Dummy Data Karakter
   final List<Map<String, dynamic>> characters = [
-    {'name': 'Anime', 'icon': Icons.face_4, 'color': Colors.pink, 'active': true}, // Hanya ini yang aktif
+    {'name': 'Anime', 'icon': Icons.face_4, 'color': Colors.pink, 'active': true},
+    {'name': 'Vtuber', 'icon': Icons.live_tv, 'color': Colors.indigoAccent, 'active': true}, // ✅ News Anchor diganti Vtuber & Aktif
     {'name': 'Cyborg', 'icon': Icons.android, 'color': Colors.cyan, 'active': false},
     {'name': 'Hantu', 'icon': Icons.mood_bad, 'color': Colors.purple, 'active': false},
     {'name': 'Chipmunk', 'icon': Icons.pest_control_rodent, 'color': Colors.orange, 'active': false},
-    {'name': 'News Anchor', 'icon': Icons.mic_external_on, 'color': Colors.blue, 'active': false},
     {'name': 'Deep Voice', 'icon': Icons.graphic_eq, 'color': Colors.teal, 'active': false},
   ];
 
@@ -128,11 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return GestureDetector(
       onTap: () {
-        if (isActive && char['name'] == 'Anime') {
-          // Jika Anime, Tampilkan Pilihan Keqing / Klee
-          _showAnimeSelectionModal(context);
-        } else {
-          // Jika yang lain, Tampilkan Info Upcoming
+        if (!isActive) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("${char['name']} belum tersedia (Upcoming Feature)"),
@@ -140,10 +136,18 @@ class _HomeScreenState extends State<HomeScreen> {
               duration: const Duration(seconds: 1),
             ),
           );
+          return;
+        }
+
+        // LOGIC NAVIGASI BERDASARKAN KATEGORI
+        if (char['name'] == 'Anime') {
+          _showAnimeSelectionModal(context);
+        } else if (char['name'] == 'Vtuber') {
+          _showVtuberSelectionModal(context); // ✅ Buka Modal Vtuber
         }
       },
       child: Opacity(
-        opacity: isActive ? 1.0 : 0.5, // Bikin agak transparan kalau tidak aktif
+        opacity: isActive ? 1.0 : 0.5,
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xFF1E1E2C),
@@ -193,7 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- MODAL PILIHAN ANIME (KEQING vs KLEE) ---
+  // =========================================
+  // 1. MODAL ANIME (Keqing, Klee)
+  // =========================================
   void _showAnimeSelectionModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -211,30 +217,14 @@ class _HomeScreenState extends State<HomeScreen> {
               const Text("Pilih Model Anime", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 20),
 
-              // Opsi 1: Keqing
               _buildModelOption(
-                  context,
-                  "Keqing (Genshin Impact)",
-                  "assets/images/keqing_thumb.png",
-                  Colors.purpleAccent,
-                      () {
-                    Navigator.pop(context); // Tutup modal
-                    _navigateToStudio("Keqing", "Keqing_e500_s13000.pth", "Keqing.index");
-                  }
+                  context, "Keqing (Genshin)", Icons.bolt, Colors.purpleAccent,
+                      () { Navigator.pop(context); _navigateToStudio("Keqing", "Keqing_e500_s13000.pth", "Keqing.index"); }
               ),
-
               const SizedBox(height: 10),
-
-              // Opsi 2: Klee
               _buildModelOption(
-                  context,
-                  "Klee (Genshin Impact)",
-                  "assets/images/klee_thumb.png",
-                  Colors.redAccent,
-                      () {
-                    Navigator.pop(context); // Tutup modal
-                    _navigateToStudio("Klee", "Klee_280e_6440s.pth", "klee.index");
-                  }
+                  context, "Klee (Genshin)", Icons.local_fire_department, Colors.redAccent,
+                      () { Navigator.pop(context); _navigateToStudio("Klee", "Klee_280e_6440s.pth", "klee.index"); }
               ),
               const SizedBox(height: 20),
             ],
@@ -244,7 +234,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildModelOption(BuildContext context, String title, String imagePath, Color color, VoidCallback onTap) {
+  // =========================================
+  // 2. MODAL VTUBER (Zeta)
+  // =========================================
+  void _showVtuberSelectionModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E2C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Pilih Model Vtuber", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 20),
+
+              // ✅ ZETA OPTION
+              _buildModelOption(
+                  context,
+                  "Vestia Zeta (Hololive)",
+                  Icons.policy, // Icon agen rahasia/kucing
+                  Colors.grey,
+                      () {
+                    Navigator.pop(context);
+                    // Masukkan Nama File Persis Sesuai Request
+                    _navigateToStudio(
+                        "Zeta",
+                        "zetaTest.pth",
+                        "added_IVF462_Flat_nprobe_1_zetaTest_v2.index"
+                    );
+                  }
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildModelOption(BuildContext context, String title, IconData icon, Color color, VoidCallback onTap) {
     return ListTile(
       onTap: onTap,
       tileColor: Colors.white.withOpacity(0.05),
@@ -256,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: color.withOpacity(0.2),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(Icons.spatial_audio_off, color: color),
+        child: Icon(icon, color: color),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
       subtitle: const Text("High Quality RVC V2", style: TextStyle(color: Colors.white54, fontSize: 12)),
@@ -264,14 +299,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- PERBAIKAN ADA DI SINI ---
   void _navigateToStudio(String name, String modelFile, String indexFile) {
     Navigator.push(
       context,
       MaterialPageRoute(
           builder: (context) => StudioScreen(
             characterName: name,
-            // Sekarang parameter ini wajib diisi, jadi jangan di-komen
             modelFilename: modelFile,
             indexFilename: indexFile,
           )
