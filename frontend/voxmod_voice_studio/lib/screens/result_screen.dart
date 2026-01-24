@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import '../services/api_service.dart'; // Import API Service
+import 'package:share_plus/share_plus.dart'; // Untuk Share
+import 'package:permission_handler/permission_handler.dart'; // Untuk Izin Save
+import 'package:intl/intl.dart'; // Untuk penamaan file unik
 
-//update pitch
+import '../services/api_service.dart';
 
 class ResultScreen extends StatefulWidget {
   final String characterName;
@@ -31,8 +34,8 @@ class _ResultScreenState extends State<ResultScreen> {
   final ApiService _apiService = ApiService();
 
   bool isPlaying = false;
-  bool isRegenerating = false; // Loading saat ubah pitch
-  late String activeAudioPath; // Audio yang sedang aktif diputar
+  bool isRegenerating = false;
+  late String activeAudioPath;
   late double pitchValue;
 
   @override
@@ -56,7 +59,7 @@ class _ResultScreenState extends State<ResultScreen> {
     } else {
       setState(() => isPlaying = true);
       await _player.startPlayer(
-          fromURI: activeAudioPath, // Putar file yang aktif
+          fromURI: activeAudioPath,
           whenFinished: () {
             setState(() => isPlaying = false);
           }
@@ -64,7 +67,6 @@ class _ResultScreenState extends State<ResultScreen> {
     }
   }
 
-  // 🔥 FITUR UTAMA: REQUEST ULANG KE PYTHON
   Future<void> _regenerateAudio() async {
     setState(() {
       isRegenerating = true;
@@ -74,26 +76,143 @@ class _ResultScreenState extends State<ResultScreen> {
       }
     });
 
-    // Panggil API lagi dengan Pitch Baru + File Original (Bukan file AI)
     String? newPath = await _apiService.convertVoice(
-      widget.originalAudioPath, // Pakai source asli
+      widget.originalAudioPath,
       widget.characterName,
       widget.modelFilename,
       widget.indexFilename,
-      pitchValue.toInt(), // Kirim nilai slider baru
+      pitchValue.toInt(),
     );
 
     if (mounted) {
       setState(() {
         isRegenerating = false;
         if (newPath != null) {
-          activeAudioPath = newPath; // Update file yang akan diputar
+          activeAudioPath = newPath;
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pitch berhasil diupdate!"), backgroundColor: Colors.green));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal update suara."), backgroundColor: Colors.red));
         }
       });
     }
+  }
+
+  // --- 📤 FUNGSI SHARE (WHATSAPP, TIKTOK, DLL) ---
+  Future<void> _shareFile() async {
+    if (isRegenerating) return; // Cegah share saat loading
+
+    try {
+      final file = File(activeAudioPath);
+      if (await file.exists()) {
+        // Menggunakan library share_plus
+        await Share.shareXFiles(
+            [XFile(activeAudioPath)],
+            text: "Cek suara AI ${widget.characterName} buatanku!"
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("File audio tidak ditemukan!")));
+      }
+    } catch (e) {
+      print("Error Share: $e");
+    }
+  }
+
+  // --- 💾 FUNGSI SIMPAN KE DOWNLOADS ---
+  // --- 💾 FUNGSI SIMPAN (FIXED FOR ANDROID 11/12/13+) ---
+  Future<void> _saveFile() async {
+    if (isRegenerating) return;
+
+    // 1. Cek Permission (Logic Android 11+ vs Lama)
+    if (Platform.isAndroid) {
+      // Cek Manage External Storage (Android 11+)
+      if (await Permission.manageExternalStorage.status.isDenied) {
+        await Permission.manageExternalStorage.request();
+      }
+      // Cek Storage Biasa (Fallback)
+      if (await Permission.storage.status.isDenied) {
+        await Permission.storage.request();
+      }
+    }
+
+    try {
+      // 2. CEK APAKAH FILE SUMBER ADA? (Ini kunci masalahmu)
+      File sourceFile = File(activeAudioPath);
+      if (!await sourceFile.exists()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Error: File Audio Sumber Hilang/Corrupt!"), backgroundColor: Colors.red)
+        );
+        return;
+      }
+
+      int fileSize = await sourceFile.length();
+      if (fileSize < 1000) { // Kalau di bawah 1KB, berarti file rusak/kosong
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Error: File Audio Kosong (0 detik)."), backgroundColor: Colors.red)
+        );
+        return;
+      }
+
+      // 3. Tentukan Path Download
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = "VoxMod_${widget.characterName}_$timestamp.wav";
+
+      // Hardcode path Download Android (Paling aman)
+      Directory downloadDir = Directory('/storage/emulated/0/Download');
+      if (!await downloadDir.exists()) {
+        downloadDir = Directory('/storage/emulated/0/Downloads'); // Coba pakai 's'
+      }
+
+      final String newPath = "${downloadDir.path}/$fileName";
+
+      // 4. Salin File
+      await sourceFile.copy(newPath);
+
+      // 5. MEDIA SCANNER (Agar muncul di Gallery/File Manager HP)
+      // Kita pakai trik sederhana: Kirim broadcast agar HP scan file baru
+      try {
+        if (Platform.isAndroid) {
+          // Jika mau lebih canggih bisa pakai package 'media_scanner',
+          // tapi biasanya copy ke Download folder sudah cukup terbaca.
+        }
+      } catch (_) {}
+
+      print("File tersimpan di: $newPath"); // Cek di Terminal
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Tersimpan di Download:\n$fileName"),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+
+    } catch (e) {
+      print("SAVE ERROR: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal Simpan: $e"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // Helper untuk membuka Settings jika izin ditolak permanen
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Izin Ditolak"),
+        content: const Text("Aplikasi ini membutuhkan izin 'Kelola Semua File' (All Files Access) untuk menyimpan hasil ke folder Download. Silakan aktifkan di Pengaturan."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              openAppSettings(); // Membuka pengaturan HP
+            },
+            child: const Text("Buka Pengaturan"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -169,7 +288,6 @@ class _ResultScreenState extends State<ResultScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text("Ubah Pitch (Nada)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      // Tombol Terapkan (Hanya aktif jika tidak loading)
                       ElevatedButton(
                         onPressed: isRegenerating ? null : _regenerateAudio,
                         style: ElevatedButton.styleFrom(
@@ -182,8 +300,6 @@ class _ResultScreenState extends State<ResultScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-
-                  // Slider Pitch
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       activeTrackColor: Colors.blueAccent,
@@ -209,7 +325,7 @@ class _ResultScreenState extends State<ResultScreen> {
                       children: [
                         Text("-12 (Berat)", style: TextStyle(color: Colors.white24, fontSize: 10)),
                         Text("0 (Normal)", style: TextStyle(color: Colors.white24, fontSize: 10)),
-                        Text("+12 (Imut)", style: TextStyle(color: Colors.white24, fontSize: 10)),
+                        Text("+24 (Imut)", style: TextStyle(color: Colors.white24, fontSize: 10)),
                       ],
                     ),
                   )
@@ -219,12 +335,12 @@ class _ResultScreenState extends State<ResultScreen> {
 
             const Spacer(),
 
-            // --- SHARE BUTTONS ---
+            // --- SHARE & SAVE BUTTONS (SUDAH AKTIF) ---
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: _shareFile, // <--- Panggil Fungsi Share
                     icon: const Icon(Icons.share, size: 18),
                     label: const Text("Share"),
                     style: ElevatedButton.styleFrom(
@@ -238,7 +354,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 const SizedBox(width: 15),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: _saveFile, // <--- Panggil Fungsi Save
                     icon: const Icon(Icons.save_alt, size: 18),
                     label: const Text("Simpan"),
                     style: ElevatedButton.styleFrom(
