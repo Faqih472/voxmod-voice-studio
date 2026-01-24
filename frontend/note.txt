@@ -1,34 +1,33 @@
-MyNotes
-
 voxmod-voice-studio/
-├── README.md
-├── LICENSE
-├── .gitignore
-├── SECURITY.md
+├── README.md               # Dokumentasi umum proyek (cara install, cara jalanin)
+├── LICENSE                 # Lisensi kode (misal: MIT, Apache)
+├── .gitignore              # Daftar file yang diabaikan Git (agar file sampah/temp tidak ikut ke-upload)
+├── SECURITY.md             # Kebijakan keamanan proyek
 │
-├── api-contract/
-│   └── openapi.yaml
+├── api-contract/           # Dokumentasi spesifikasi API
+│   └── openapi.yaml        # File kontrak API (jembatan info antara Backend & Frontend)
 │
-├── frontend/
-│   ├── README.md
-│   └── voxmod_voice_studio/
-│       ├── android/          (auto dari Flutter)
-│       ├── ios/              (auto)
-│       ├── web/              (auto)
-│       ├── windows/          (auto)
-│       ├── linux/            (auto)
-│       ├── macos/            (auto)
-│       ├── test/             (auto)
-│       │
-│       ├── lib/
-│       │   ├── main.dart     ✅ (SATU-SATUNYA FILE YANG KITA ISI SEKARANG)
-│       │
-│       ├── assets/           (kosong dulu)
-│       │   ├── icons/
-│       │   └── audio/
-│       │
-│       ├── pubspec.yaml
-│       └── README.md
-
-
-
+├── backend/                # Server Python & Engine AI (RVC)
+│   ├── assets/             # Penyimpanan file model AI
+│   │   ├── hubert/         # Model pre-trained untuk ekstraksi fitur suara (soft-vc hubert)
+│   │   └── weights/        # Model suara karakter (file .pth) & index file (.index)
+│   ├── outputs/            # Tempat hasil konversi audio disimpan sementara sebelum dikirim ke HP
+│   ├── uploads/            # Tempat menampung file rekaman mentah dari user (HP)
+│   └── main.py             # Kode utama server FastAPI & logika inference AI
+│
+└── frontend/
+    ├── README.md           # Dokumentasi khusus bagian mobile apps
+    └── voxmod_voice_studio/ # Project Root Flutter
+        ├── android/        # Konfigurasi native Android (Permission Mic, Gradle, Manifest)
+        ├── ios/            # Konfigurasi native iOS (Info.plist, Runner)
+        ├── lib/            # Source code utama aplikasi (Dart)
+        │   ├── screens/    # Kumpulan halaman UI (Tampilan)
+        │   │   ├── home_screen.dart       # Halaman awal/Dasbor
+        │   │   ├── studio_screen.dart     # Halaman untuk merekam suara & pilih karakter, loading animasi saat AI bekerja
+        │   │   └── result_screen.dart     # Halaman pemutar audio hasil konversi
+        │   ├── services/   # Logika komunikasi data
+        │   │   └── api_services.dart      # Kode untuk upload file & terima hasil dari Backend
+        │   └── main.dart   # Titik awal aplikasi berjalan (Entry point)
+        │
+        ├── assets/         # Aset statis aplikasi (Gambar, Icon, Font)
+        └── pubspec.yaml    # Manajer paket/library Flutter & pengaturan aset
