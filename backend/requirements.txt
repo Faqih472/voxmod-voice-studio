@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 fastapi
 uvicorn
 python-multipart
@@ -9,4 +10,18 @@ torchaudio
 librosa==0.9.2
 soundfile
 fairseq
+=======
+fastapi
+uvicorn
+python-multipart
+requests
+numpy
+scipy
+torch
+torchaudio
+librosa==0.9.2
+soundfile
+fairseq
+>>>>>>> origin/main
 faiss-cpu
+
