@@ -2,6 +2,10 @@
 
 > **Transform your voice into anyone.** VoxMod is a next-generation AI Voice Changer application powered by **RVC (Retrieval-based Voice Conversion)**. It seamlessly integrates a Flutter-based mobile studio with a high-performance Python FastAPI backend to deliver realistic, customizable voice transformations.
 
+**⚠️ Note:** This application is currently in **active development**. Features may change, and some functionalities might be unstable. Use at your own discretion.
+
+![VoxMod Preview](assets/demo.gif)
+
 ![Status](https://img.shields.io/badge/Status-Active_Development-green)
 ![Tech](https://img.shields.io/badge/Tech-Flutter_%7C_Python_%7C_RVC-blue)
 ![License](https://img.shields.io/badge/License-AGPL_3.0-red)
