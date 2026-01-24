@@ -1,6 +1,5 @@
-
 import 'package:flutter/material.dart';
-import 'studio_screen.dart'; // Import halaman Studio untuk navigasi
+import 'studio_screen.dart'; // Pastikan StudioScreen sudah di-import
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,12 +11,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // Dummy Data Karakter
   final List<Map<String, dynamic>> characters = [
-    {'name': 'Cyborg', 'icon': Icons.android, 'color': Colors.cyan},
-    {'name': 'Hantu', 'icon': Icons.mood_bad, 'color': Colors.purple},
-    {'name': 'Chipmunk', 'icon': Icons.pest_control_rodent, 'color': Colors.orange},
-    {'name': 'News Anchor', 'icon': Icons.mic_external_on, 'color': Colors.blue},
-    {'name': 'Anime Girl', 'icon': Icons.face_4, 'color': Colors.pink},
-    {'name': 'Deep Voice', 'icon': Icons.graphic_eq, 'color': Colors.teal},
+    {'name': 'Anime', 'icon': Icons.face_4, 'color': Colors.pink, 'active': true}, // Hanya ini yang aktif
+    {'name': 'Cyborg', 'icon': Icons.android, 'color': Colors.cyan, 'active': false},
+    {'name': 'Hantu', 'icon': Icons.mood_bad, 'color': Colors.purple, 'active': false},
+    {'name': 'Chipmunk', 'icon': Icons.pest_control_rodent, 'color': Colors.orange, 'active': false},
+    {'name': 'News Anchor', 'icon': Icons.mic_external_on, 'color': Colors.blue, 'active': false},
+    {'name': 'Deep Voice', 'icon': Icons.graphic_eq, 'color': Colors.teal, 'active': false},
   ];
 
   int selectedCategoryIndex = 0;
@@ -38,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Greeting / Banner
+          // Banner Unlock Premium
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: Container(
@@ -123,45 +122,159 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- LOGIC UI CARD ---
   Widget _buildCharacterCard(Map<String, dynamic> char) {
+    bool isActive = char['active'];
+
     return GestureDetector(
       onTap: () {
-        // Navigasi ke Studio Screen membawa data karakter
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => StudioScreen(characterName: char['name'])),
+        if (isActive && char['name'] == 'Anime') {
+          // Jika Anime, Tampilkan Pilihan Keqing / Klee
+          _showAnimeSelectionModal(context);
+        } else {
+          // Jika yang lain, Tampilkan Info Upcoming
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("${char['name']} belum tersedia (Upcoming Feature)"),
+              backgroundColor: Colors.grey[800],
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+      },
+      child: Opacity(
+        opacity: isActive ? 1.0 : 0.5, // Bikin agak transparan kalau tidak aktif
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E2C),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: isActive ? char['color'].withOpacity(0.5) : Colors.white10,
+                width: isActive ? 2 : 1
+            ),
+            boxShadow: [
+              if (isActive)
+                BoxShadow(
+                  color: char['color'].withOpacity(0.2),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: char['color'].withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(char['icon'], size: 40, color: char['color']),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                  char['name'],
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+              ),
+              const SizedBox(height: 5),
+              Text(
+                  isActive ? "Available" : "Upcoming",
+                  style: TextStyle(
+                      color: isActive ? Colors.greenAccent : Colors.white38,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold
+                  )
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- MODAL PILIHAN ANIME (KEQING vs KLEE) ---
+  void _showAnimeSelectionModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E2C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Pilih Model Anime", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 20),
+
+              // Opsi 1: Keqing
+              _buildModelOption(
+                  context,
+                  "Keqing (Genshin Impact)",
+                  "assets/images/keqing_thumb.png",
+                  Colors.purpleAccent,
+                      () {
+                    Navigator.pop(context); // Tutup modal
+                    _navigateToStudio("Keqing", "Keqing_e500_s13000.pth", "Keqing.index");
+                  }
+              ),
+
+              const SizedBox(height: 10),
+
+              // Opsi 2: Klee
+              _buildModelOption(
+                  context,
+                  "Klee (Genshin Impact)",
+                  "assets/images/klee_thumb.png",
+                  Colors.redAccent,
+                      () {
+                    Navigator.pop(context); // Tutup modal
+                    _navigateToStudio("Klee", "Klee_280e_6440s.pth", "klee.index");
+                  }
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         );
       },
-      child: Container(
+    );
+  }
+
+  Widget _buildModelOption(BuildContext context, String title, String imagePath, Color color, VoidCallback onTap) {
+    return ListTile(
+      onTap: onTap,
+      tileColor: Colors.white.withOpacity(0.05),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      leading: Container(
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E2C),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          color: color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: char['color'].withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(char['icon'], size: 40, color: char['color']),
-            ),
-            const SizedBox(height: 15),
-            Text(char['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 5),
-            const Text("AI Model V2", style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ],
-        ),
+        child: Icon(Icons.spatial_audio_off, color: color),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+      subtitle: const Text("High Quality RVC V2", style: TextStyle(color: Colors.white54, fontSize: 12)),
+      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+    );
+  }
+
+  // --- PERBAIKAN ADA DI SINI ---
+  void _navigateToStudio(String name, String modelFile, String indexFile) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => StudioScreen(
+            characterName: name,
+            // Sekarang parameter ini wajib diisi, jadi jangan di-komen
+            modelFilename: modelFile,
+            indexFilename: indexFile,
+          )
       ),
     );
   }
