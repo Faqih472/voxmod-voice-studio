@@ -141,7 +141,8 @@ Response: Returns processed `.wav` audio file.
   - Keqing.index  
   - Keqing_e500_s13000.pth  
   - hubert_base.pt  
-  - rmvpe.pth  
+  - rmvpe.pth
+  - zeta
   - Klee  
   - Others or download from:  
     - [Google Drive](https://drive.google.com/drive/folders/1cGXv43h6hgYSjyCiJ1LKe9FEdCe0BhLB?usp=drive_link)  
