@@ -1,7 +1,16 @@
+<<<<<<< HEAD
 fastapi
 uvicorn
 python-multipart
 requests
 numpy
 scipy
+=======
+fastapi
+uvicorn
+python-multipart
+requests
+numpy
+scipy
+>>>>>>> origin/main
 # soundfile
