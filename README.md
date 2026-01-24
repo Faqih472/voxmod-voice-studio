@@ -8,7 +8,7 @@
 
 ![Status](https://img.shields.io/badge/Status-Active_Development-green)
 ![Tech](https://img.shields.io/badge/Tech-Flutter_%7C_Python_%7C_RVC-blue)
-![License](https://img.shields.io/badge/License-AGPL_3.0-red)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
 
@@ -165,10 +165,12 @@ Response: Returns processed `.wav` audio file.
 
 ## 🔒 License
 
-AGPL-3.0:  
-✅ Personal use, educational use, modification  
-❌ Commercial use or SaaS hosting without open-sourcing  
+MIT License:  
+✅ Personal use, educational use, modification, and commercial use allowed.  
+✅ Redistribution and private use allowed.  
 
 **Disclaimer:** For creative and educational purposes only. Do not use for deepfakes or malicious impersonation.
+
+<p align="center">Built with 💙 by <b>VoxMod Team</b></p>
 
 <p align="center">Built with 💙 by <b>VoxMod Team</b></p>
