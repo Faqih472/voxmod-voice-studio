@@ -1,17 +1,84 @@
 import os
+import sys
 import shutil
 import torch
 import numpy as np
 from scipy.io import wavfile 
+from pydub import AudioSegment 
 
-# --- 🛠️ BYPASS SECURITY (WAJIB ADA) ---
+# ==========================================
+# 🛑 TAHAP 1: KONFIGURASI & CEK FILE (WAJIB DULUAN)
+# ==========================================
+print("\n" + "="*40)
+print("🔍 SYSTEM CHECK: MEMERIKSA FILE AI...")
+print("="*40)
+
+BASE_DIR = os.getcwd()
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
+
+# --- DEFINISI LOKASI FILE ---
+# Pastikan nama file ini sesuai dengan yang ada di folder backend Anda
+HUBERT_FILE = "hubert_base.pt"
+RMVPE_FILE  = "rmvpe.pth"
+MODEL_FILE  = "Keqing_e500_s13000.pth"
+INDEX_FILE  = "Keqing.index"
+
+HUBERT_PATH = os.path.join(BASE_DIR, HUBERT_FILE)
+RMVPE_PATH  = os.path.join(BASE_DIR, RMVPE_FILE)
+MODEL_PATH  = os.path.join(BASE_DIR, "assets", "weights", MODEL_FILE)
+INDEX_PATH  = os.path.join(BASE_DIR, "assets", "weights", INDEX_FILE)
+
+# --- LOGIKA PENGECEKAN VISUAL ---
+
+# 1. Cek Hubert
+if os.path.exists(HUBERT_PATH):
+    print(f"✅ [OK] HUBERT ditemukan di: {HUBERT_PATH}")
+    os.environ["hubert_path"] = HUBERT_PATH # Paksa Environment Variable
+else:
+    print(f"❌ [GAGAL] File '{HUBERT_FILE}' TIDAK ADA di folder backend!")
+    sys.exit(1) # Matikan program jika file ini hilang
+
+# 2. Cek RMVPE
+if os.path.exists(RMVPE_PATH):
+    print(f"✅ [OK] RMVPE ditemukan di: {RMVPE_PATH}")
+    os.environ["rmvpe_path"] = RMVPE_PATH # Paksa Environment Variable
+else:
+    print(f"❌ [GAGAL] File '{RMVPE_FILE}' TIDAK ADA di folder backend!")
+    sys.exit(1)
+
+# 3. Cek Model Suara
+if os.path.exists(MODEL_PATH):
+    print(f"✅ [OK] MODEL Suara ditemukan: {MODEL_FILE}")
+else:
+    print(f"❌ [GAGAL] Model '{MODEL_FILE}' tidak ditemukan di assets/weights!")
+    sys.exit(1)
+
+# 4. Cek Index
+if os.path.exists(INDEX_PATH):
+    print(f"✅ [OK] INDEX Suara ditemukan: {INDEX_FILE}")
+else:
+    print(f"⚠️ [WARNING] File Index tidak ditemukan. Suara mungkin kurang mirip.")
+
+print("="*40)
+print("✨ SEMUA FILE LENGKAP! MEMULAI SERVER...")
+print("="*40 + "\n")
+
+# ==========================================
+# 🛠️ TAHAP 2: LIBRARY & SECURITY BYPASS
+# ==========================================
+# Hardcode FFMPEG
+AudioSegment.converter = r"C:\ffmpeg\bin\ffmpeg.exe"
+AudioSegment.ffmpeg = r"C:\ffmpeg\bin\ffmpeg.exe"
+AudioSegment.ffprobe = r"C:\ffmpeg\bin\ffprobe.exe"
+
+# Bypass Security
 original_load = torch.load
 def bypass_security_load(*args, **kwargs):
     if 'weights_only' not in kwargs:
         kwargs['weights_only'] = False
     return original_load(*args, **kwargs)
 torch.load = bypass_security_load
-# --------------------------------------
 
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
@@ -20,21 +87,11 @@ from rvc_python.infer import RVCInference
 
 app = FastAPI()
 
-# --- PATH ---
-BASE_DIR = os.getcwd()
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
-
-MODEL_NAME = "Keqing_e500_s13000.pth"
-INDEX_NAME = "Keqing.index"
-
-MODEL_PATH = os.path.join(BASE_DIR, "assets", "weights", MODEL_NAME)
-INDEX_PATH = os.path.join(BASE_DIR, "assets", "weights", INDEX_NAME)
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-print(f"⏳ Memuat Model: {MODEL_NAME}...")
+# Inisialisasi RVC (Dilakukan setelah cek file di atas sukses)
+print(f"⏳ Sedang memuat Model ke GPU...")
 rvc = RVCInference(device="cuda:0") 
 
 @app.post("/convert")
@@ -51,74 +108,64 @@ async def convert_voice(
         output_filename = f"rvc_{file.filename.split('.')[0]}.wav"
         output_location = os.path.join(OUTPUT_FOLDER, output_filename)
 
-        print(f"🔄 Mengubah suara: {file.filename}")
+        print(f"\n🔄 PROSES BARU: Mengubah suara {file.filename}")
 
-        # 2. LOAD MODEL & PARAMETER
+        # 2. LOAD MODEL
+        # Kita load ulang untuk memastikan path benar
         rvc.load_model(MODEL_PATH)
+        
+        # --- SETTING PITCH ---
+        # 12 = Laki-laki ke Perempuan (Wajib naik oktaf)
+        # 0  = Perempuan ke Perempuan
         PITCH = 12 
         
-        # 3. EKSEKUSI (Ambil Semua Hasil Mentah)
-        print("⚙️ Memproses di Core Engine...")
+        # 3. EKSEKUSI UTAMA
+        print(f"⚙️  Sedang Convert... (Mode: RMVPE, Pitch: {PITCH})")
         
         full_result = rvc.vc.vc_single(
-            0, file_location, PITCH, None, "rmvpe", 
-            INDEX_PATH, None, 0.75, 3, 0, 0.25, 0.33
+            0, 
+            file_location, 
+            PITCH, 
+            None, 
+            "rmvpe",        # Pastikan string ini "rmvpe"
+            INDEX_PATH,     # File index dipanggil disini
+            None, 
+            0.75, 3, 0, 0.25, 0.33
         )
 
-        # --- 🕵️ SMART SEARCH LOGIC (CARA BARU) ---
+        # --- LOGIC PENCARIAN OUTPUT ---
         target_sr = None
         audio_data = None
 
-        # Kita loop hasilnya satu per satu untuk identifikasi
-        # full_result biasanya tuple berisi (sr, audio) atau (audio, sr)
-        if isinstance(full_result, tuple) or isinstance(full_result, list):
+        if isinstance(full_result, (tuple, list)):
             for item in full_result:
-                if isinstance(item, int):
-                    # Kalau angka (misal 40000 atau 48000), ini Sample Rate
-                    target_sr = item
-                    print(f"🔍 Ditemukan Sample Rate: {target_sr}")
-                elif isinstance(item, np.ndarray):
-                    # Kalau Array Numpy, ini Audionya!
-                    audio_data = item
-                    print(f"🔍 Ditemukan Audio Data (Shape: {audio_data.shape})")
+                if isinstance(item, int): target_sr = item
+                elif isinstance(item, np.ndarray): audio_data = item
                 elif isinstance(item, tuple):
-                    # Kadang audionya ngumpet di dalam tuple lagi
                     for subitem in item:
-                        if isinstance(subitem, np.ndarray):
-                            audio_data = subitem
-                            print(f"🔍 Ditemukan Audio Data (Hidden): {audio_data.shape}")
+                        if isinstance(subitem, np.ndarray): audio_data = subitem
 
-        # Fallback jika audio_data belum ketemu tapi full_result itu sendiri adalah array
         if audio_data is None and isinstance(full_result, np.ndarray):
              audio_data = full_result
 
-        # VALIDASI TERAKHIR
+        # VALIDASI
         if audio_data is None:
-            raise ValueError("❌ Gagal menemukan data audio dalam output AI!")
+            raise ValueError("❌ Gagal: Output AI Kosong!")
         
-        if target_sr is None:
-            target_sr = 40000 # Default safe value
+        if target_sr is None: target_sr = 40000 
 
-        # 4. NORMALISASI & SAVE
-        # Pastikan audio data gepeng (1 Dimensi)
-        if len(audio_data.shape) > 1:
-            audio_data = audio_data.flatten()
-
-        # Konversi Float ke Int16 (Supaya bisa di-play)
+        # 4. SAVE FILE
+        if len(audio_data.shape) > 1: audio_data = audio_data.flatten()
+        
         if audio_data.dtype != np.int16:
-            # Cek apakah range -1.0 s/d 1.0 (Float)
-            if np.abs(audio_data).max() <= 1.5: # Margin dikit
-                print("ℹ️ Konversi Float ke Int16...")
+            if np.abs(audio_data).max() <= 1.5: 
                 audio_data = (audio_data * 32767).astype(np.int16)
-            else:
-                # Berarti sudah integer tapi format float, paksa casting
+            else: 
                 audio_data = audio_data.astype(np.int16)
 
         wavfile.write(output_location, target_sr, audio_data)
-        # -----------------------------------------
 
-        print(f"✅ SUKSES FINAL! File tersimpan: {output_filename}")
-        print(f"📊 Info File: Rate={target_sr}, Size={audio_data.shape}")
+        print(f"✅ BERHASIL! File disimpan di: {output_filename}")
         
         return FileResponse(output_location, media_type="audio/wav", filename=output_filename)
     
