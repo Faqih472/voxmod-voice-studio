@@ -5,13 +5,15 @@
 
 ---
 
-## ✨ Demo Preview
+## ✨ Demo Preview (GIF)
 
 | 📱 Mobile App (Frontend) | ⚙️ AI Core Engine (Backend) |
 |-------------------------|-----------------------------|
-| *(Replace this with App Demo GIF/Video link)* | *(Replace this with Backend Terminal GIF link)* |
-| ![App Demo](https://via.placeholder.com/300x600?text=App+Recording+Demo) | ![Backend Running](https://via.placeholder.com/600x300?text=Server+Processing+Log) |
-| Flutter UI: Character Selection & Recording | Server Logs: RVC Processing & Pitch Shifting |
+| **Live App Demo (GIF)** | **Backend Inference (GIF)** |
+| ⬜ *GIF coming soon* | ⬜ *GIF coming soon* |
+| App UI: character selection, recording, and playback | Server logs: real-time RVC inference & pitch processing |
+
+> 📌 Demo GIFs will be added after final UI & backend stabilization.
 
 ---
 
@@ -51,8 +53,6 @@ VoxMod provides a variety of ready-to-use voice presets, ranging from Anime char
 
 ## 📂 Project Structure (Monorepo)
 
-This repository combines both backend AI logic and frontend mobile application.
-
 voxmod-voice-studio  
 ├── api-contract  
 │   └── OpenAPI specification  
@@ -79,7 +79,7 @@ voxmod-voice-studio
 ### Backend (AI Engine)
 
 - Requires Python 3.10 or newer  
-- NVIDIA GPU is highly recommended for best performance  
+- NVIDIA GPU is highly recommended  
 - RVC model files (.pth and .index) must be placed in the backend assets directory  
 - Backend server runs locally on port 8000
 
