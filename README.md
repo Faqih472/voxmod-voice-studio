@@ -53,25 +53,41 @@ VoxMod is designed to work with standard `.pth` (RVC Model) and `.index` (Featur
 
 ## 📂 Project Structure
 
-The project follows a Monorepo structure separating the Mobile App and the AI Server.
-
-voxmod-voice-studio  
-├── backend/                  # Python API Server  
-│   ├── assets/               
-│   │   └── weights/          # PLACE YOUR .PTH & .INDEX FILES HERE  
-│   ├── uploads/              # Auto-generated temp input audio  
-│   ├── outputs/              # Auto-generated temp result audio  
-│   ├── hubert_base.pt        # Required Hubert Model  
-│   ├── rmvpe.pth             # Required Pitch Extraction Model  
-│   ├── main.py               # Main FastAPI Server Entrypoint  
-│   └── requirements.txt      # Python Dependencies  
-└── frontend/                 # Flutter Mobile App  
-    └── voxmod_voice_studio/  
-        ├── lib/  
-        │   ├── screens/      # StudioScreen, ResultScreen, HomeScreen  
-        │   ├── services/     # ApiService (Multipart Requests)  
-        │   └── main.dart     # App Entrypoint  
-        └── pubspec.yaml      # Flutter Dependencies  
+voxmod-voice-studio/  
+├── README.md               # Dokumentasi umum proyek (cara install, cara jalanin)  
+├── LICENSE                 # Lisensi kode (misal: AGPL-3.0)  
+├── .gitignore              # File/folder yang diabaikan Git  
+├── SECURITY.md             # Kebijakan keamanan proyek  
+│  
+├── api-contract/           # Dokumentasi spesifikasi API  
+│   └── openapi.yaml        # File kontrak API (Backend ↔ Frontend)  
+│  
+├── backend/                # Server Python & Engine AI (RVC)  
+│   ├── assets/             # Model AI & file index  
+│   │   ├── hubert/         # Model pre-trained untuk ekstraksi fitur suara (soft-vc hubert)  
+│   │   └── weights/        # Model suara karakter (.pth) & index (.index)  
+│   ├── outputs/            # Hasil konversi audio sementara  
+│   ├── uploads/            # File rekaman mentah dari user  
+│   ├── main.py             # Kode utama server FastAPI & AI inference  
+│   ├── note.txt            # Catatan: file model yang diperlukan & link download  
+│   ├── requirement.txt     # Dependencies utama  
+│   └── requirement(first).txt # Dependencies tambahan / alternatif  
+│  
+└── frontend/  
+    ├── README.md           # Dokumentasi bagian mobile apps  
+    └── voxmod_voice_studio/ # Root project Flutter  
+        ├── android/        # Konfigurasi native Android (Gradle, Manifest, permission mic)  
+        ├── ios/            # Konfigurasi native iOS (Info.plist, Runner)  
+        ├── lib/            # Source code utama (Dart)  
+        │   ├── screens/    # Halaman UI  
+        │   │   ├── home_screen.dart  
+        │   │   ├── studio_screen.dart  
+        │   │   └── result_screen.dart  
+        │   ├── services/   # Logika komunikasi data  
+        │   │   └── api_services.dart  
+        │   └── main.dart   # Entry point aplikasi  
+        ├── assets/         # Aset statis (gambar, icon, font)  
+        └── pubspec.yaml    # Manajer paket/library Flutter & aset  
 
 ---
 
@@ -111,6 +127,35 @@ Response: Returns processed `.wav` audio file.
 - FFmpeg not found → ensure installed and in PATH.  
 - Connection refused → make sure phone and PC are on same Wi-Fi and API URL uses PC IP, not localhost.  
 - Audio robotic/glitchy → adjust pitch (-12 to +12), ensure clear recording without background noise.
+
+---
+
+## 📝 Backend Notes
+
+**note.txt**:  
+- Required assets:  
+  - Keqing.index  
+  - Keqing_e500_s13000.pth  
+  - hubert_base.pt  
+  - rmvpe.pth  
+  - Klee  
+  - Others or download from:  
+    - [Google Drive](https://drive.google.com/drive/folders/1cGXv43h6hgYSjyCiJ1LKe9FEdCe0BhLB?usp=drive_link)  
+    - [Huggingface KleeJP](https://huggingface.co/Kakao111/KleeJP/resolve/main/KleeJP.zip?download=true)  
+
+**Additional Requirements / Installation Notes**:  
+- pip install "numpy<2.0"  
+- pip install rvc-python  
+- pip uninstall -y numpy tensorflow tensorboard tf-keras tb-nightly  
+- pip install "numpy==1.26.4"  
+- pip install "tensorboard==2.15.1"  
+- pip install scipy  
+- pip install fastapi uvicorn rvc-python pydub python-multipart  
+- pip install librosa  
+- FFmpeg: download [here](https://www.gyan.dev/ffmpeg/builds/) & check with `ffmpeg -version`
+
+**requirement.txt**: fastapi, uvicorn, python-multipart, requests, numpy, scipy, torch, torchaudio, librosa==0.9.2, soundfile, fairseq, faiss-cpu  
+**requirement(first).txt**: fastapi, uvicorn, python-multipart, requests, numpy, scipy
 
 ---
 
